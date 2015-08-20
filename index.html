@@ -1,95 +1,73 @@
----
-layout: base
-title: Overview
----
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8">
+    <title>Sugar by mbag102</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+  </head>
+  <body>
+    <section class="page-header">
+      <h1 class="project-name">Sugar</h1>
+      <h2 class="project-tagline">Finally an Android equivalent to iOS Core-Data</h2>
+      <a href="https://github.com/mbag102/sugar" class="btn">View on GitHub</a>
+      <a href="https://github.com/mbag102/sugar/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/mbag102/sugar/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
 
-<header class="jumbotron subhead" id="overview">
-  <div class="container">
-    <h1>Sugar ORM</h1>
-    <p class="lead">Insanely easy way to work with Android Databases.</p>
-  </div>
-</header>
+    <section class="main-content">
+      <h1>
+<a id="sugar-orm" class="anchor" href="#sugar-orm" aria-hidden="true"><span class="octicon octicon-link"></span></a>Sugar ORM</h1>
 
-<div class="container">
-  <div class="row">
-    <div class="col-md-3">
-      <div id="sidebar" role="complementary" data-spy="affix" data-offset-top="165">
-        <ul class="nav sidebar">
-          <li class="active"><a href="#download-sugar">Download</a></li>
-          <li><a href="#how-help">How does it help</a></li>
-          <li><a href="#why">Why it was made</a></li>
-          <li><a href="#what">What it provides</a></li>
-          <li><a href="#what-next">What next?</a></li>
-        </ul>
-      </div>
-    </div>
-    <div class="col-md-9">
-      <section id="download-sugar">
-        <div class="page-header">
-          <h1>1. Download</h1>
-        </div>
-        <p class="lead">Gradle:</p>
+<p>This is a library that makes SQL Database interactions much easier than standard SQLite. This provides many features and helper methods that can be used for even the most complicated Database schemas.</p>
 
-        <div class="row">
+<h3>
+<a id="note" class="anchor" href="#note" aria-hidden="true"><span class="octicon octicon-link"></span></a>Note</h3>
 
+<p>This is a fork from the original <a href="http://satyan.github.io/sugar">Sugar Orm</a>. I have added many of my own features and will be maintaining this project for the forseable future.</p>
 
-{% highlight xml %}
-compile 'com.github.satyan:sugar:1.3'
-{% endhighlight %}
-        
-          
-        </div>
-      </section>
+<h2>
+<a id="features" class="anchor" href="#features" aria-hidden="true"><span class="octicon octicon-link"></span></a>Features</h2>
 
+<ul>
+<li>Automatic schema generation</li>
+<li>Complex model support</li>
+<li>Object relationships (One-to-One, One-to-Many, Many-To-One, and Many-To-Many)</li>
+<li>Specifying a custom field to be the primary key (<a href="https://github.com/Id" class="user-mention">@Id</a> annotation)</li>
+<li>Helper query methods such as findUnique and findByRelationship</li>
+<li>Object Cascading</li>
+<li>Lazy loading of objects</li>
+</ul>
 
-      <section id="how-help">
-        <div class="page-header">
-          <h1>2. How does it help.</h1>
-        </div>
-        <p class="lead">It is intended to simplify the interaction with SQLite database in Android.</p>
+<h2>
+<a id="future-features" class="anchor" href="#future-features" aria-hidden="true"><span class="octicon octicon-link"></span></a>Future features</h2>
 
-        <ul>
-          <li>It eliminates writing SQL queries to interact with SQLite db.</li>
-          <li>It takes care of creating your database.</li>
-          <li>It manages object relationships too.</li>
-          <li>It provides you with clear and simple APIs for db operations</li>
-        </ul>
-      </section>
+<ul>
+<li>Eager loading of objects</li>
+</ul>
 
+<p>Let me know what features are important or bugs you encounter and I will do my best to fix them. I use this in many of my own projects and have found great success.</p>
 
-      <section id="why">
-        <div class="page-header">
-          <h1>3. Why it was made</h1>
-        </div>
-        <p class="lead">We felt the need for it while building Android apps that had following characteristics:</p>
+<h3>
+<a id="for-those-of-you-looking-to-use-this-db-for-offline-data-storage-caching-check-out-spice" class="anchor" href="#for-those-of-you-looking-to-use-this-db-for-offline-data-storage-caching-check-out-spice" aria-hidden="true"><span class="octicon octicon-link"></span></a>For those of you looking to use this DB for offline data storage (caching), Check out <a href="http://github.com/mbag102/spice">Spice</a>
+</h3>
 
-        <ul>
-          <li>Fairly large and complex data model.</li>
-          <li>Primary work was to save/retrieve and iterate over the business objects.</li>
-          <li>Lot of boiler plate code for the db operations.</li>
-          <li>We wanted to write our business logic in less technical and more business fashion.</li>
-        </ul>
-      </section>
+<h2>
+<a id="support-or-contact" class="anchor" href="#support-or-contact" aria-hidden="true"><span class="octicon octicon-link"></span></a>Support or Contact</h2>
 
+<p>Having trouble with Sugar? Check out our <a href="https://github.com/spice">documentation</a> or <a href="mailto:support@emmbimobile.com">contact me</a> and we’ll help you sort it out.</p>
 
-      <section id="what">
-        <div class="page-header">
-          <h1>4. What it provides</h1>
-        </div>
-        <p class="lead">There are two parts to it:</p>
-        <ul>
-          <li>database creation</li>
-          <li>simple APIs to manipulate your business objects</li>
-        </ul>
-      </section>
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/mbag102/sugar">Sugar</a> is maintained by <a href="https://github.com/mbag102">mbag102</a>.</span>
 
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
 
-      <section id="what-next">
-        <div class="page-header">
-          <h1>What next?</h1>
-        </div>
-        <p class="lead">Get started by including Sugar ORM as part of your project. Read the "Getting Started" section for help.</p>
-      </section>
-    </div>
-  </div>
-</div>
+    </section>
+
+  
+  </body>
+</html>
