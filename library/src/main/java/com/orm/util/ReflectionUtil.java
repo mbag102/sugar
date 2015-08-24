@@ -17,6 +17,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.Exception;
 import java.lang.Object;
+import java.lang.RuntimeException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -458,6 +459,8 @@ public class ReflectionUtil {
             discoveredClass = Class.forName(className, true, context.getClass().getClassLoader());
         } catch (ClassNotFoundException e) {
             Log.e("Sugar", e.getMessage());
+        } catch (ExceptionInInitializerError e1) {
+            Log.e("Sugar", e1.getMessage());
         }
 
         if ((discoveredClass != null) &&
