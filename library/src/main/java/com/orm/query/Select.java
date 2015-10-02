@@ -16,14 +16,24 @@ public class Select<T> implements Iterable {
     private String groupBy;
     private String limit;
     private String offset;
+    private boolean caseInsensitive = false;
     private List<Object> args = new ArrayList<Object>();
 
     public Select(Class<T> record) {
+        this(record, false);
+    }
+
+    public Select(Class<T> record, boolean caseInsensitive) {
         this.record = record;
+        this.caseInsensitive = caseInsensitive;
     }
 
     public static <T> Select<T> from(Class<T> record) {
         return new Select<T>(record);
+    }
+
+    public static <T> Select<T> caseInsensitiveFrom(Class<T> record) {
+        return new Select<T>(record, true);
     }
 
     public Select<T> orderBy(String prop) {
@@ -63,11 +73,15 @@ public class Select<T> implements Iterable {
             if (Condition.Check.LIKE.equals(condition.getCheck()) ||
                     Condition.Check.NOT_LIKE.equals(condition.getCheck())) {
                 toAppend
+                    .append(caseInsensitive ? "LOWER(" : "")
                     .append(condition.getProperty())
+                    .append(caseInsensitive ? ")" : "")
                     .append(condition.getCheckSymbol())
+                    .append(caseInsensitive ? "LOWER(" : "")
                     .append("'")
                     .append(condition.getValue().toString())
-                    .append("'");
+                    .append("'")
+                    .append(caseInsensitive ? ")" : "");
             } else if (Condition.Check.IS_NULL.equals(condition.getCheck()) ||
                     Condition.Check.IS_NOT_NULL.equals(condition.getCheck())) {
                 toAppend
@@ -75,9 +89,13 @@ public class Select<T> implements Iterable {
                     .append(condition.getCheckSymbol());
             } else {
                 toAppend
+                    .append(caseInsensitive ? "LOWER(" : "")
                     .append(condition.getProperty())
+                    .append(caseInsensitive ? ")" : "")
                     .append(condition.getCheckSymbol())
-                    .append("? ");
+                    .append(caseInsensitive ? "LOWER(" : "")
+                    .append("? ")
+                    .append(caseInsensitive ? ")" : "");
                 args.add(condition.getValue());
             }
         }
