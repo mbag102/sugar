@@ -45,7 +45,7 @@ public class ReflectionUtil {
         getAllFields(typeFields, table);
 
         for (Field field : typeFields) {
-            if(field.isAnnotationPresent(Relationship.class) && ((Relationship) field.getAnnotation(Relationship.class)).cascade()) {
+            if(field.isAnnotationPresent(Relationship.class)) {
 
                 field.setAccessible(true);
                 Class<?> columnType = field.getType();
@@ -85,9 +85,16 @@ public class ReflectionUtil {
 
                             //They should be
                             if (SugarRecord.isSugarEntity(child.getClass())) {
-                                boolean success = recordsToSave.add((SugarRecord) child);
+
+                                boolean success = true;
+
+                                if(((Relationship) field.getAnnotation(Relationship.class)).cascade()) {
+                                    success = recordsToSave.add((SugarRecord) child);
+                                }
 
                                 //If not then it means it is a bidirectional relationship and we don't want it showing up twice
+                                //Even if there is no cascading, we still want to hook up the relationship.
+                                //NOTE: If cascading = false, the child object must already exist or this will fail because no Id will be present.
                                 if(success) {
 
                                     ContentValues contentValues = new ContentValues(2);
@@ -96,7 +103,9 @@ public class ReflectionUtil {
 
                                     joinTables.put(relationship.joinTable(), contentValues);
 
-                                    ReflectionUtil.getRecordsToSave(child, recordsToSave, joinTables);
+                                    if(((Relationship) field.getAnnotation(Relationship.class)).cascade()) {
+                                        ReflectionUtil.getRecordsToSave(child, recordsToSave, joinTables);
+                                    }
                                 }
                             } else {
                                 break;
@@ -444,9 +453,13 @@ public class ReflectionUtil {
                 if (domainClass != null) domainClasses.add(domainClass);
             }
         } catch (IOException e) {
-            Log.e("Sugar", e.getMessage());
+            if(e != null && e.getMessage() != null) {
+                Log.e("Sugar", e.getMessage());
+            }
         } catch (PackageManager.NameNotFoundException e) {
-            Log.e("Sugar", e.getMessage());
+            if(e != null && e.getMessage() != null) {
+                Log.e("Sugar", e.getMessage());
+            }
         }
 
         return domainClasses;
@@ -458,9 +471,13 @@ public class ReflectionUtil {
         try {
             discoveredClass = Class.forName(className, true, context.getClass().getClassLoader());
         } catch (ClassNotFoundException e) {
-            Log.e("Sugar", e.getMessage());
+            if(e != null && e.getMessage() != null) {
+                Log.e("Sugar", e.getMessage());
+            }
         } catch (ExceptionInInitializerError e1) {
-            Log.e("Sugar", e1.getMessage());
+            if(e1 != null && e1.getMessage() != null) {
+                Log.e("Sugar", e1.getMessage());
+            }
         }
 
         if ((discoveredClass != null) &&
