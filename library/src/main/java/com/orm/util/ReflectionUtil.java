@@ -7,6 +7,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
+import com.google.common.collect.ListMultimap;
 import com.orm.SugarRecord;
 import com.orm.dsl.Id;
 import com.orm.dsl.Ignore;
@@ -28,9 +29,6 @@ import java.sql.Timestamp;
 import java.util.*;
 import java.util.Collection;
 import java.util.HashSet;
-
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.ListMultimap;
 
 import dalvik.system.DexFile;
 
@@ -196,9 +194,9 @@ public class ReflectionUtil {
             Object columnValue = column.get(object);
 
             if (columnType.isAnnotationPresent(Table.class)) {
-                Field field = null;
-                Table table = columnType.getAnnotation(Table.class);
+                Field field;
                 try {
+                    Table table = columnType.getAnnotation(Table.class);
                     field = columnType.getDeclaredField(table.primaryKeyField());
                     field.setAccessible(true);
                     values.put(columnName,
@@ -350,6 +348,12 @@ public class ReflectionUtil {
 
             int columnIndex = cursor.getColumnIndex(colName);
 
+            //TODO auto upgrade to add new columns
+            if (columnIndex < 0) {
+                Log.e("SUGAR", "Invalid colName, you should upgrade database");
+                return;
+            }
+
             if (cursor.isNull(columnIndex)) {
                 return;
             }
@@ -470,14 +474,9 @@ public class ReflectionUtil {
         Class<?> discoveredClass = null;
         try {
             discoveredClass = Class.forName(className, true, context.getClass().getClassLoader());
-        } catch (ClassNotFoundException e) {
-            if(e != null && e.getMessage() != null) {
-                Log.e("Sugar", e.getMessage());
-            }
-        } catch (ExceptionInInitializerError e1) {
-            if(e1 != null && e1.getMessage() != null) {
-                Log.e("Sugar", e1.getMessage());
-            }
+        } catch (Throwable e) {
+            String error = (e.getMessage() == null) ? "getDomainClass " + className + " error" : e.getMessage();
+            Log.e("Sugar", error);
         }
 
         if ((discoveredClass != null) &&
@@ -513,7 +512,8 @@ public class ReflectionUtil {
             while (urls.hasMoreElements()) {
                 List<String> fileNames = new ArrayList<String>();
                 String classDirectoryName = urls.nextElement().getFile();
-                if (classDirectoryName.contains("bin") || classDirectoryName.contains("classes")) {
+                if (classDirectoryName.contains("bin") || classDirectoryName.contains("classes")
+                        || classDirectoryName.contains("retrolambda")) {
                     File classDirectory = new File(classDirectoryName);
                     for (File filePath : classDirectory.listFiles()) {
                         populateFiles(filePath, fileNames, "");
@@ -524,8 +524,9 @@ public class ReflectionUtil {
                 }
             }
         } finally {
-            if (null != dexfile) dexfile.close();
+//            if (null != dexfile) dexfile.close();
         }
+
         return classNames;
     }
 

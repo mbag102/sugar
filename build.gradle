@@ -1,13 +1,13 @@
 apply plugin: 'jacoco'
 apply plugin: 'com.github.kt3k.coveralls'
+apply plugin: 'java'
 
 buildscript {
     repositories {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:1.1.1'
-        classpath 'org.robolectric:robolectric-gradle-plugin:1.0.1'
+        classpath 'com.android.tools.build:gradle:1.5.0'
         classpath 'org.kt3k.gradle.plugin:coveralls-gradle-plugin:2.3.1'
     }
 }
@@ -15,7 +15,11 @@ buildscript {
 def isReleaseBuild() {
     return version.contains("SNAPSHOT") == false
 }
-
+test{
+    testLogging{
+        exceptionFormat = 'full'
+    }
+}
 allprojects {
     version = VERSION_NAME
     group = GROUP
@@ -34,7 +38,7 @@ subprojects { proj ->
         version "0.7.1.20151214"
     }
 
-    task jacocoTestReport(type: JacocoReport, dependsOn: "testDebug") {
+    task jacocoTestReport(type: JacocoReport) {
         group = "Reporting"
         description = "Generate Jacoco coverage reports after running tests."
         reports {
@@ -46,7 +50,7 @@ subprojects { proj ->
                 excludes: ['**/R*.class',
                            '**/BuildConfig*'])
         sourceDirectories = files('src/main/java')
-        executionData = files('build/jacoco/testDebug.exec')
+        executionData = files('build/jacoco/testDebugUnitTest.exec')
         doFirst {
             files('build/intermediates/classes/debug').getFiles().each { file ->
                 if (file.name.contains('$$')) {

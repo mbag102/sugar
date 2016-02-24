@@ -7,9 +7,11 @@ import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
 import com.orm.dsl.Column;
+import com.orm.dsl.MultiUnique;
 import com.orm.dsl.Relationship;
 import com.orm.dsl.NotNull;
 import com.orm.dsl.Unique;
+import com.orm.util.MigrationFileParser;
 import com.orm.util.NamingHelper;
 import com.orm.util.NumberComparator;
 import com.orm.util.QueryBuilder;
@@ -20,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -29,6 +32,11 @@ import static com.orm.util.ReflectionUtil.getDomainClasses;
 public class SchemaGenerator {
 
     private Context context;
+
+    public static final String NULL = " NULL";
+    public static final String NOT_NULL = " NOT NULL";
+    public static final String UNIQUE = " UNIQUE";
+    public static final String SUGAR = "Sugar";
 
     public SchemaGenerator(Context context) {
         this.context = context;
@@ -52,14 +60,31 @@ public class SchemaGenerator {
     public void doUpgrade(SQLiteDatabase sqLiteDatabase, int oldVersion, int newVersion) {
         List<Class> domainClasses = getDomainClasses(context);
         String sql = "select count(*) from sqlite_master where type='table' and name='%s';";
+
         for (Class domain : domainClasses) {
-            Cursor c = sqLiteDatabase.rawQuery(String.format(sql, NamingHelper.toSQLName(domain)), null);
+            String tableName = NamingHelper.toSQLName(domain);
+            Cursor c = sqLiteDatabase.rawQuery(String.format(sql, tableName), null);
             if (c.moveToFirst() && c.getInt(0) == 0) {
                 createTable(domain, sqLiteDatabase);
+            } else {
+                addColumns(domain, sqLiteDatabase);
             }
         }
         executeSugarUpgrade(sqLiteDatabase, oldVersion, newVersion);
     }
+
+    private ArrayList<String> getColumnNames(SQLiteDatabase sqLiteDatabase, String tableName) {
+        Cursor resultsQuery = sqLiteDatabase.query(tableName, null, null, null, null, null, null);
+        //Check if columns match vs the one on the domain class
+        ArrayList<String> columnNames = new ArrayList<>();
+        for (int i = 0; i < resultsQuery.getColumnCount(); i++) {
+            String columnName = resultsQuery.getColumnName(i);
+            columnNames.add(columnName);
+        }
+        resultsQuery.close();
+        return columnNames;
+    }
+
 
     public void deleteTables(SQLiteDatabase sqLiteDatabase) {
         List<Class> tables = getDomainClasses(context);
@@ -75,7 +100,7 @@ public class SchemaGenerator {
             List<String> files = Arrays.asList(this.context.getAssets().list("sugar_upgrades"));
             Collections.sort(files, new NumberComparator());
             for (String file : files) {
-                Log.i("Sugar", "filename : " + file);
+                Log.i(SUGAR, "filename : " + file);
 
                 try {
                     int version = Integer.valueOf(file.replace(".sql", ""));
@@ -85,12 +110,12 @@ public class SchemaGenerator {
                         isSuccess = true;
                     }
                 } catch (NumberFormatException e) {
-                    Log.i("Sugar", "not a sugar script. ignored." + file);
+                    Log.i(SUGAR, "not a sugar script. ignored." + file);
                 }
 
             }
         } catch (IOException e) {
-            Log.e("Sugar", e.getMessage());
+            Log.e(SUGAR, e.getMessage());
         }
 
         return isSuccess;
@@ -100,19 +125,27 @@ public class SchemaGenerator {
         try {
             InputStream is = this.context.getAssets().open("sugar_upgrades/" + file);
             BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+            StringBuilder sb = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
-                Log.i("Sugar script", line);
-                db.execSQL(line.toString());
+                sb.append(line);
             }
+            MigrationFileParser migrationFileParser = new MigrationFileParser(sb.toString());
+            for(String statement: migrationFileParser.getStatements()){
+                Log.i("Sugar script", statement);
+                if (!statement.isEmpty()) {
+                    db.execSQL(statement);
+                }
+            }
+
         } catch (IOException e) {
-            Log.e("Sugar", e.getMessage());
+            Log.e(SUGAR, e.getMessage());
         }
 
-        Log.i("Sugar", "Script executed");
+        Log.i(SUGAR, "Script executed");
     }
 
-    private void clearTable(Class<?> table, SQLiteDatabase sqLiteDatabase) {
+	private void clearTable(Class<?> table, SQLiteDatabase sqLiteDatabase) {
         Log.i("Sugar", "Clear table");
         List<Field> fields = ReflectionUtil.getTableFields(table);
         String tableName = NamingHelper.toSQLName(table);
@@ -150,11 +183,57 @@ public class SchemaGenerator {
         }
     }
 
-    private void createTable(Class<?> table, SQLiteDatabase sqLiteDatabase) {
-        Log.i("Sugar", "Create table");
+    private void addColumns(Class<?> table, SQLiteDatabase sqLiteDatabase) {
+
         List<Field> fields = ReflectionUtil.getTableFields(table);
         String tableName = NamingHelper.toSQLName(table);
-        StringBuilder sb = new StringBuilder("CREATE TABLE ");
+        ArrayList<String> presentColumns = getColumnNames(sqLiteDatabase, tableName);
+        ArrayList<String> alterCommands = new ArrayList<>();
+
+        for (Field column : fields) {
+            String columnName = NamingHelper.toSQLName(column);
+            String columnType = QueryBuilder.getColumnType(column.getType());
+
+            if (column.isAnnotationPresent(Column.class)) {
+                Column columnAnnotation = column.getAnnotation(Column.class);
+                columnName = columnAnnotation.name();
+            }
+
+            if (!presentColumns.contains(columnName)) {
+                StringBuilder sb = new StringBuilder("ALTER TABLE ");
+                sb.append(tableName).append(" ADD COLUMN ").append(columnName).append(" ").append(columnType);
+                if (column.isAnnotationPresent(NotNull.class)) {
+                    if (columnType.endsWith(" NULL")) {
+                        sb.delete(sb.length() - 5, sb.length());
+                    }
+                    sb.append(" NOT NULL");
+                }
+
+                // Unique is not working on ALTER TABLE
+//                if (column.isAnnotationPresent(Unique.class)) {
+//                    sb.append(" UNIQUE");
+//                }
+                alterCommands.add(sb.toString());
+            }
+			
+            //Create join table for all relationships. This will prevent issues with migrations (yes, unnecessary joins will be slower)
+            if(column.isAnnotationPresent(Relationship.class)) {
+                Relationship relationship =  column.getAnnotation(Relationship.class);
+                createJoinTable(relationship, sqLiteDatabase);
+            }
+        }
+
+        for (String command : alterCommands) {
+            Log.i("Sugar", command);
+            sqLiteDatabase.execSQL(command);
+        }
+    }
+
+    protected String createTableSQL(Class<?> table, SQLiteDatabase sqLiteDatabase) {
+        Log.i(SUGAR, "Create table if not exists");
+        List<Field> fields = ReflectionUtil.getTableFields(table);
+        String tableName = NamingHelper.toSQLName(table);
+        StringBuilder sb = new StringBuilder("CREATE TABLE IF NOT EXISTS ");
         sb.append(tableName).append(" ( ID INTEGER PRIMARY KEY AUTOINCREMENT ");
 
         for (Field column : fields) {
@@ -173,31 +252,31 @@ public class SchemaGenerator {
                     sb.append(", ").append(columnName).append(" ").append(columnType);
 
                     if (columnAnnotation.notNull()) {
-                        if (columnType.endsWith(" NULL")) {
+                        if (columnType.endsWith(NULL)) {
                             sb.delete(sb.length() - 5, sb.length());
                         }
-                        sb.append(" NOT NULL");
+                        sb.append(NOT_NULL);
                     }
 
                     if (columnAnnotation.unique()) {
-                        sb.append(" UNIQUE");
+                        sb.append(UNIQUE);
                     }
 
                 } else {
                     sb.append(", ").append(columnName).append(" ").append(columnType);
 
                     if (column.isAnnotationPresent(NotNull.class)) {
-                        if (columnType.endsWith(" NULL")) {
+                        if (columnType.endsWith(NULL)) {
                             sb.delete(sb.length() - 5, sb.length());
                         }
-                        sb.append(" NOT NULL");
+                        sb.append(NOT_NULL);
                     }
 
                     if (column.isAnnotationPresent(Unique.class)) {
-                        sb.append(" UNIQUE");
+                        sb.append(UNIQUE);
                     }
                 }
-
+				
                 //Create join table for all relationships. This will prevent issues with migrations (yes, unnecessary joins will be slower)
                 if(column.isAnnotationPresent(Relationship.class)) {
                     Relationship relationship =  column.getAnnotation(Relationship.class);
@@ -206,12 +285,36 @@ public class SchemaGenerator {
             }
         }
 
-        sb.append(" ) ");
-        Log.i("Sugar", "Creating table " + tableName);
+        if (table.isAnnotationPresent(MultiUnique.class)) {
+            String constraint = table.getAnnotation(MultiUnique.class).value();
 
-        if (!"".equals(sb.toString())) {
+            sb.append(", UNIQUE(");
+
+            String[] constraintFields = constraint.split(",");
+            for(int i = 0; i < constraintFields.length; i++) {
+                String columnName = NamingHelper.toSQLNameDefault(constraintFields[i]);
+                sb.append(columnName);
+
+                if(i < (constraintFields.length -1)) {
+                    sb.append(",");
+                }
+            }
+
+            sb.append(") ON CONFLICT REPLACE");
+        }
+
+        sb.append(" ) ");
+        Log.i(SUGAR, "Creating table " + tableName);
+
+        return sb.toString();
+    }
+
+    private void createTable(Class<?> table, SQLiteDatabase sqLiteDatabase) {
+        String createSQL = createTableSQL(table, sqLiteDatabase);
+
+        if (!createSQL.isEmpty()) {
             try {
-                sqLiteDatabase.execSQL(sb.toString());
+                sqLiteDatabase.execSQL(createSQL);
             } catch (SQLException e) {
                 e.printStackTrace();
             }
