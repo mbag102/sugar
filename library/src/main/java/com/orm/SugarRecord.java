@@ -239,6 +239,25 @@ public class SugarRecord {
         return toRet;
     }
 
+    public static List<Long> executeRawQuery(String query) {
+        SugarDb db = getSugarContext().getSugarDb();
+        SQLiteDatabase sqLiteDatabase = db.getDB();
+        List<Long> ids = new ArrayList<Long>();
+
+        Cursor cursor = sqLiteDatabase.rawQuery(query, new String[0]);
+
+        try {
+            while (cursor.moveToNext()) {
+                ids.add(cursor.getLong(cursor.getColumnIndex("ID")));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            cursor.close();
+        }
+        return ids;
+    }
+
     private static void appendClause(StringBuilder s, String name, String clause) {
         if (!TextUtils.isEmpty(clause)) {
             s.append(name);
