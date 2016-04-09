@@ -10,6 +10,16 @@ import java.util.Iterator;
 import java.util.List;
 
 public class Select<T> implements Iterable {
+    private static final String SPACE = " ";
+    private static final String SINGLE_QUOTE = "'";
+    private static final String LEFT_PARENTHESIS = "(";
+    private static final String RIGHT_PARENTHESIS = ")";
+    private static final String SELECT_FROM = "SELECT * FROM ";
+    private static final String WHERE = "WHERE ";
+    private static final String ORDER_BY = "ORDER BY ";
+    private static final String GROUP_BY = "GROUP BY ";
+    private static final String LIMIT = "LIMIT ";
+    private static final String OFFSET = "OFFSET ";
 
     private Class<T> record;
     private String[] arguments;
@@ -18,17 +28,7 @@ public class Select<T> implements Iterable {
     private String groupBy = "";
     private String limit = "";
     private String offset = "";
-    private List<Object> args = new ArrayList<Object>();
-    private static final String SPACE =" ";
-    private static final String SINGLE_QUOTE ="'";
-    private static final String LEFT_PARENTHESIS="(";
-    private static final String RIGHT_PARENTHESIS=")";
-    private static final String SELECT_FROM="SELECT * FROM ";
-    private static final String WHERE="WHERE ";
-    private static final String ORDER_BY ="ORDER BY ";
-    private static final String GROUP_BY ="GROUP BY ";
-    private static final String LIMIT ="LIMIT ";
-    private static final String OFFSET ="OFFSET ";
+    private List<String> args = new ArrayList<>();
     private boolean caseInsensitive;
 
     public Select(Class<T> record) {
@@ -41,7 +41,7 @@ public class Select<T> implements Iterable {
     }
 
     public static <T> Select<T> from(Class<T> record) {
-        return new Select<T>(record);
+        return new Select<>(record);
     }
 
     public static <T> Select<T> caseInsensitiveFrom(Class<T> record) {
@@ -108,10 +108,8 @@ public class Select<T> implements Iterable {
                     .append(condition.getProperty())
                     .append(caseInsensitive ? ")" : "")
                     .append(condition.getCheckSymbol())
-                    .append(caseInsensitive ? "LOWER(" : "")
-                    .append("? ")
-                    .append(caseInsensitive ? ")" : "");
-                args.add(condition.getValue());
+                    .append("? ");
+                args.add(condition.getValue().toString());
             }
         }
         
@@ -206,14 +204,8 @@ public class Select<T> implements Iterable {
         return convertArgs(args);
     }
 
-    private String[] convertArgs(List<Object> argsList) {
-        String[] argsArray = new String[argsList.size()];
-
-        for (int i = 0; i < argsList.size(); i++) {
-             argsArray[i] = argsList.get(i).toString();
-        }
-
-        return argsArray;
+    private String[] convertArgs(List<String> argsList) {
+        return argsList.toArray(new String[argsList.size()]);
     }
 
     @Override

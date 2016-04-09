@@ -7,7 +7,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:1.5.0'
+        classpath 'com.android.tools.build:gradle:2.0.0'
         classpath 'org.kt3k.gradle.plugin:coveralls-gradle-plugin:2.3.1'
     }
 }
@@ -35,7 +35,7 @@ subprojects { proj ->
     apply plugin: 'jacoco'
 
     jacoco {
-        version "0.7.1.20151214"
+        version "0.7.1.20160408"
     }
 
     task jacocoTestReport(type: JacocoReport) {

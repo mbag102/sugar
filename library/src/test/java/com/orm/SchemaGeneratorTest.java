@@ -1,6 +1,5 @@
 package com.orm;
 
-import com.orm.dsl.Table;
 import com.orm.models.EmptyModel;
 import com.orm.models.IntUniqueModel;
 import com.orm.models.MultiColumnUniqueModel;
@@ -8,6 +7,7 @@ import com.orm.models.StringFieldAnnotatedModel;
 import com.orm.models.StringFieldExtendedModel;
 import com.orm.models.StringFieldExtendedModelAnnotatedColumn;
 import com.orm.query.DummyContext;
+import com.orm.util.ContextUtil;
 import com.orm.util.NamingHelper;
 
 import org.junit.Test;
@@ -15,10 +15,12 @@ import org.junit.Test;
 import static junit.framework.Assert.assertEquals;
 
 public class SchemaGeneratorTest {
+
     @Test
     public void testEmptyTableCreation() throws Exception {
-        SchemaGenerator schemaGenerator = new SchemaGenerator(new DummyContext());
-        String createSQL = schemaGenerator.createTableSQL(EmptyModel.class);
+        ContextUtil.init(new DummyContext());
+        SchemaGenerator schemaGenerator = SchemaGenerator.getInstance();
+        String createSQL = schemaGenerator.createTableSQL(EmptyModel.class, SugarDb.getInstance().getWritableDatabase());
         assertEquals(
                 "CREATE TABLE IF NOT EXISTS " + NamingHelper.toSQLName(EmptyModel.class) +
                     " ( ID INTEGER PRIMARY KEY AUTOINCREMENT  ) ",
@@ -27,15 +29,16 @@ public class SchemaGeneratorTest {
 
     @Test
     public void testSimpleColumnTableCreation() throws Exception {
-        SchemaGenerator schemaGenerator = new SchemaGenerator(new DummyContext());
-        String createSQL = schemaGenerator.createTableSQL(StringFieldExtendedModel.class);
+        ContextUtil.init(new DummyContext());
+        SchemaGenerator schemaGenerator = SchemaGenerator.getInstance();
+        String createSQL = schemaGenerator.createTableSQL(StringFieldExtendedModel.class, SugarDb.getInstance().getWritableDatabase());
         assertEquals(
                 "CREATE TABLE IF NOT EXISTS " + NamingHelper.toSQLName(StringFieldExtendedModel.class) +
                         " ( ID INTEGER PRIMARY KEY AUTOINCREMENT , " +
                         "NAME TEXT ) ",
                 createSQL);
 
-        String createSQL2 = schemaGenerator.createTableSQL(StringFieldAnnotatedModel.class);
+        String createSQL2 = schemaGenerator.createTableSQL(StringFieldAnnotatedModel.class, SugarDb.getInstance().getWritableDatabase());
 
         assertEquals(
                 "CREATE TABLE IF NOT EXISTS " + NamingHelper.toSQLName(StringFieldAnnotatedModel.class) +
@@ -43,7 +46,7 @@ public class SchemaGeneratorTest {
                         "NAME TEXT ) ",
                 createSQL2);
 
-        String createSQL3 = schemaGenerator.createTableSQL(StringFieldExtendedModelAnnotatedColumn.class);
+        String createSQL3 = schemaGenerator.createTableSQL(StringFieldExtendedModelAnnotatedColumn.class, SugarDb.getInstance().getWritableDatabase());
 
         assertEquals(
                 "CREATE TABLE IF NOT EXISTS " + NamingHelper.toSQLName(StringFieldExtendedModelAnnotatedColumn.class) +
@@ -54,8 +57,9 @@ public class SchemaGeneratorTest {
 
     @Test
     public void testUniqueTableCreation() {
-        SchemaGenerator schemaGenerator = new SchemaGenerator(new DummyContext());
-        String createSQL = schemaGenerator.createTableSQL(IntUniqueModel.class);
+        ContextUtil.init(new DummyContext());
+        SchemaGenerator schemaGenerator = SchemaGenerator.getInstance();
+        String createSQL = schemaGenerator.createTableSQL(IntUniqueModel.class, SugarDb.getInstance().getWritableDatabase());
         assertEquals(
                 "CREATE TABLE IF NOT EXISTS " + NamingHelper.toSQLName(IntUniqueModel.class) +
                         " ( ID INTEGER PRIMARY KEY AUTOINCREMENT , " +
@@ -65,8 +69,9 @@ public class SchemaGeneratorTest {
 
     @Test
     public void testMultiColumnUniqueTableCreation() {
-        SchemaGenerator schemaGenerator = new SchemaGenerator(new DummyContext());
-        String createSQL = schemaGenerator.createTableSQL(MultiColumnUniqueModel.class);
+        ContextUtil.init(new DummyContext());
+        SchemaGenerator schemaGenerator = SchemaGenerator.getInstance();
+        String createSQL = schemaGenerator.createTableSQL(MultiColumnUniqueModel.class, SugarDb.getInstance().getWritableDatabase());
         assertEquals(
                 "CREATE TABLE IF NOT EXISTS " + NamingHelper.toSQLName(MultiColumnUniqueModel.class) +
                         " ( ID INTEGER PRIMARY KEY AUTOINCREMENT , " +

@@ -10,11 +10,11 @@ import android.util.Log;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
-
 import com.orm.dsl.Id;
 import com.orm.dsl.Relationship;
 import com.orm.dsl.Table;
 import com.orm.dsl.Unique;
+import com.orm.util.ManifestHelper;
 import com.orm.util.NamingHelper;
 import com.orm.util.QueryBuilder;
 import com.orm.util.ReflectionUtil;
@@ -31,12 +31,11 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
-
 import static com.orm.SugarContext.getSugarContext;
 
 public class SugarRecord {
-
     public static final String SUGAR = "Sugar";
+
     private Long id = null;
 
     private static SQLiteDatabase getSugarDataBase() {
@@ -182,13 +181,13 @@ public class SugarRecord {
 
     public static <T> Iterator<T> findWithQueryAsIterator(Class<T> type, String query, String... arguments) {
         Cursor cursor = getSugarDataBase().rawQuery(query, arguments);
-        return new CursorIterator<T>(type, cursor);
+        return new CursorIterator<>(type, cursor);
     }
 
     public static <T> Iterator<T> findAsIterator(Class<T> type, String whereClause, String[] whereArgs, String groupBy, String orderBy, String limit) {
         Cursor cursor = getSugarDataBase().query(NamingHelper.toSQLName(type), null, whereClause, whereArgs,
                 groupBy, null, orderBy, limit);
-        return new CursorIterator<T>(type, cursor);
+        return new CursorIterator<>(type, cursor);
     }
 
     public static <T> List<T> find(Class<T> type, String whereClause, String... whereArgs) {
@@ -284,7 +283,11 @@ public class SugarRecord {
     }
 
     public static <T> List<T> find(Class<T> type, String whereClause, String[] whereArgs, String groupBy, String orderBy, String limit) {
-        Cursor cursor = getSugarDataBase().query(NamingHelper.toSQLName(type), null, whereClause, whereArgs,
+
+        String args[];
+        args = (whereArgs == null) ? null : replaceArgs(whereArgs);
+
+        Cursor cursor = getSugarDataBase().query(NamingHelper.toSQLName(type), null, whereClause, args,
                 groupBy, null, orderBy, limit);
 
         return getEntitiesFromCursor(cursor, type);
@@ -292,7 +295,7 @@ public class SugarRecord {
 
     public static <T> List<T> getEntitiesFromCursor(Cursor cursor, Class<T> type){
         T entity;
-        List<T> result = new ArrayList<T>();
+        List<T> result = new ArrayList<>();
         try {
             while (cursor.moveToNext()) {
                 entity = type.getDeclaredConstructor().newInstance();
@@ -308,15 +311,15 @@ public class SugarRecord {
         return result;
     }
 
-    public static <T> long count(Class<?> type) {
+    public static <T> long count(Class<T> type) {
         return count(type, null, null, null, null, null);
     }
 
-    public static <T> long count(Class<?> type, String whereClause, String[] whereArgs) {
+    public static <T> long count(Class<T> type, String whereClause, String[] whereArgs) {
     	return count(type, whereClause, whereArgs, null, null, null);
     }
 
-    public static <T> long count(Class<?> type, String whereClause, String[] whereArgs, String groupBy, String orderBy, String limit) {
+    public static <T> long count(Class<T> type, String whereClause, String[] whereArgs, String groupBy, String orderBy, String limit) {
         long result = -1;
         String filter = (!TextUtils.isEmpty(whereClause)) ? " where "  + whereClause : "";
         SQLiteStatement sqliteStatement;
@@ -371,6 +374,21 @@ public class SugarRecord {
 
 
     static long save(SQLiteDatabase db, Object object) {
+
+        Set<SugarRecord> recordsToSave = new HashSet<SugarRecord>();
+        ListMultimap<String, ContentValues> joinTables = ArrayListMultimap.create();
+        ReflectionUtil.getRecordsToSave(object, recordsToSave, joinTables);
+
+        if(recordsToSave != null && !recordsToSave.isEmpty()) {
+            saveInTx(recordsToSave);
+
+            if(joinTables != null) {
+                for(String tableName: joinTables.keySet()) {
+                    saveJoinTableList(getSugarContext().getSugarDb().getDB(), joinTables.get(tableName), tableName);
+                }
+            }
+        }
+
         Map<Object, Long> entitiesMap = getSugarContext().getEntitiesMap();
 
         List<Field> columns = ReflectionUtil.getTableFields(object.getClass());
@@ -425,7 +443,7 @@ public class SugarRecord {
             if (idField != null) {
                 idField.setAccessible(true);
                 try {
-                    idField.set(object, new Long(id));
+                    idField.set(object, id);
                 } catch (IllegalAccessException e) {
                     e.printStackTrace();
                 }
@@ -436,7 +454,9 @@ public class SugarRecord {
             ((SugarRecord) object).setId(id);
         }
 
-        Log.i(SUGAR, object.getClass().getSimpleName() + " saved : " + id);
+        if (ManifestHelper.isDebugEnabled()) {
+            Log.i(SUGAR, object.getClass().getSimpleName() + " saved : " + id);
+        }
 
         return id;
     }
@@ -635,7 +655,7 @@ public class SugarRecord {
         }
     }
 
-    @Override
+	@Override
     /**
      * Objects are equal if their IDs are equal and their class type is equal
      */
@@ -650,5 +670,18 @@ public class SugarRecord {
             return false;
         }
     }
-    
+
+    public static String[] replaceArgs(String[] args){
+
+        String [] replace = new String[args.length];
+        for (int i=0; i<args.length; i++){
+
+            replace[i]= (args[i].equals("true")) ? replace[i]="1" : (args[i].equals("false")) ? replace[i]="0" : args[i];
+
+        }
+
+        return replace;
+
+    }
+
 }

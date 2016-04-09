@@ -4,7 +4,6 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
 import com.google.common.collect.ListMultimap;
@@ -16,21 +15,21 @@ import com.orm.dsl.Table;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.Exception;
-import java.lang.Object;
-import java.lang.RuntimeException;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.sql.Timestamp;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collection;
-import java.util.HashSet;
-
-import dalvik.system.DexFile;
+import java.util.Collections;
+import java.util.Date;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class ReflectionUtil {
 
@@ -157,11 +156,11 @@ public class ReflectionUtil {
         if (fieldList != null) return fieldList;
 
         Log.d("Sugar", "Fetching properties");
-        List<Field> typeFields = new ArrayList<Field>();
+        List<Field> typeFields = new ArrayList<>();
 
         getAllFields(typeFields, table);
 
-        List<Field> toStore = new ArrayList<Field>();
+        List<Field> toStore = new ArrayList<>();
         for (Field field : typeFields) {
             if (!field.isAnnotationPresent(Ignore.class) && !Modifier.isStatic(field.getModifiers()) && !Modifier.isTransient(field.getModifiers())) {
                 toStore.add(field);
@@ -360,7 +359,7 @@ public class ReflectionUtil {
 
             if (colName.equalsIgnoreCase("id") || field.isAnnotationPresent(Id.class)) {
                 long cid = cursor.getLong(columnIndex);
-                field.set(object, Long.valueOf(cid));
+                field.set(object, cid);
             } else if (fieldType.equals(long.class) || fieldType.equals(Long.class)) {
                 field.set(object,
                         cursor.getLong(columnIndex));
@@ -414,22 +413,18 @@ public class ReflectionUtil {
                 }
             } else
                 Log.e("Sugar", "Class cannot be read from Sqlite3 database. Please check the type of field " + field.getName() + "(" + field.getType().getName() + ")");
-        } catch (IllegalArgumentException e) {
-            Log.e("field set error", e.getMessage());
-        } catch (IllegalAccessException e) {
+        } catch (IllegalArgumentException | IllegalAccessException e) {
             Log.e("field set error", e.getMessage());
         }
     }
 
     private static Field getDeepField(String fieldName, Class<?> type) throws NoSuchFieldException {
         try {
-            Field field = type.getDeclaredField(fieldName);
-            return field;
+            return type.getDeclaredField(fieldName);
         } catch (NoSuchFieldException e) {
             Class superclass = type.getSuperclass();
             if (superclass != null) {
-                Field field = getDeepField(fieldName, superclass);
-                return field;
+                return getDeepField(fieldName, superclass);
             } else {
                 throw e;
             }
@@ -442,38 +437,30 @@ public class ReflectionUtil {
             Field field = getDeepField("id", object.getClass());
             field.setAccessible(true);
             field.set(object, value);
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (NoSuchFieldException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }*/
 
-    public static List<Class> getDomainClasses(Context context) {
-        List<Class> domainClasses = new ArrayList<Class>();
+    public static List<Class> getDomainClasses() {
+        List<Class> domainClasses = new ArrayList<>();
         try {
-            for (String className : getAllClasses(context)) {
-                Class domainClass = getDomainClass(className, context);
+            for (String className : getAllClasses()) {
+                Class domainClass = getDomainClass(className);
                 if (domainClass != null) domainClasses.add(domainClass);
             }
-        } catch (IOException e) {
-            if(e != null && e.getMessage() != null) {
-                Log.e("Sugar", e.getMessage());
-            }
-        } catch (PackageManager.NameNotFoundException e) {
-            if(e != null && e.getMessage() != null) {
-                Log.e("Sugar", e.getMessage());
-            }
+        } catch (IOException | PackageManager.NameNotFoundException  e) {
+            Log.e("Sugar", e.getMessage());
         }
 
         return domainClasses;
     }
 
 
-    private static Class getDomainClass(String className, Context context) {
+    private static Class getDomainClass(String className) {
         Class<?> discoveredClass = null;
         try {
-            discoveredClass = Class.forName(className, true, context.getClass().getClassLoader());
+            discoveredClass = Class.forName(className, true, Thread.currentThread().getContextClassLoader());
         } catch (Throwable e) {
             String error = (e.getMessage() == null) ? "getDomainClass " + className + " error" : e.getMessage();
             Log.e("Sugar", error);
@@ -494,23 +481,19 @@ public class ReflectionUtil {
     }
 
 
-    private static List<String> getAllClasses(Context context) throws PackageManager.NameNotFoundException, IOException {
-        String packageName = ManifestHelper.getDomainPackageName(context);
-        String path = getSourcePath(context);
-        List<String> classNames = new ArrayList<String>();
-        DexFile dexfile = null;
+    private static List<String> getAllClasses() throws PackageManager.NameNotFoundException, IOException {
+        String packageName = ManifestHelper.getDomainPackageName();
+        List<String> classNames = new ArrayList<>();
         try {
-            dexfile = new DexFile(path);
-            Enumeration<String> dexEntries = dexfile.entries();
-            while (dexEntries.hasMoreElements()) {
-                String className = dexEntries.nextElement();
-                if (className.startsWith(packageName)) classNames.add(className);
+            List<String> allClasses = MultiDexHelper.getAllClasses();
+            for (String classString : allClasses) {
+                if (classString.startsWith(packageName)) classNames.add(classString);
             }
         } catch (NullPointerException e) {
             ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
             Enumeration<URL> urls = classLoader.getResources("");
             while (urls.hasMoreElements()) {
-                List<String> fileNames = new ArrayList<String>();
+                List<String> fileNames = new ArrayList<>();
                 String classDirectoryName = urls.nextElement().getFile();
                 if (classDirectoryName.contains("bin") || classDirectoryName.contains("classes")
                         || classDirectoryName.contains("retrolambda")) {
@@ -523,9 +506,10 @@ public class ReflectionUtil {
                     }
                 }
             }
-        } finally {
-//            if (null != dexfile) dexfile.close();
         }
+//        } finally {
+//            if (null != dexfile) dexfile.close();
+//        }
 
         return classNames;
     }

@@ -15,8 +15,7 @@ Let me know what features are important or bugs you encounter and I will do my b
 
 ###For those of you looking to use this DB for offline data storage (caching), Check out [Spice] (http://github.com/mbag102/spice)
 
-
-# Sugar ORM [![Build Status](https://travis-ci.org/satyan/sugar.svg?branch=master)](https://travis-ci.org/satyan/sugar) [![Coverage Status](https://coveralls.io/repos/satyan/sugar/badge.svg?branch=master)](https://coveralls.io/r/satyan/sugar?branch=master)
+# Sugar ORM [![Build Status](https://travis-ci.org/satyan/sugar.svg?branch=master)](https://travis-ci.org/satyan/sugar) [![Coverage Status](https://coveralls.io/repos/satyan/sugar/badge.svg?branch=master)](https://coveralls.io/r/satyan/sugar?branch=master) [![Code Triagers Badge](http://www.codetriage.com/satyan/sugar/badges/users.svg)](http://www.codetriage.com/satyan/sugar)
 
 [![Join the chat at https://gitter.im/satyan/sugar](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/satyan/sugar?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
@@ -41,7 +40,7 @@ There are four ways to install Sugar:
 This is the preferred way. Simply add:
 
 ```groovy
-compile 'com.github.satyan:sugar:1.4'
+compile 'com.github.satyan:sugar:1.5'
 ```
 
 to your project dependencies and run `gradle build` or `gradle assemble`.
@@ -54,7 +53,7 @@ Declare the dependency in Maven:
 <dependency>
     <groupId>com.github.satyan</groupId>
     <artifactId>sugar</artifactId>
-    <version>1.4</version>
+    <version>1.5</version>
 </dependency>
 ```
 
@@ -137,6 +136,11 @@ Book book = new Book("isbn123", "Title here", "2nd edition")
 book.save();
 ```
 
+or
+```java
+SugarRecord.save(book); // if using the @Table annotation 
+```
+
 ### Load Entity
 ```java
 Book book = Book.findById(Book.class, 1);
@@ -150,10 +154,16 @@ book.edition = "3rd edition";
 book.save(); // updates the previous entry with new values.
 ```
 
+
 ### Delete Entity
 ```java
 Book book = Book.findById(Book.class, 1);
 book.delete();
+```
+
+or
+```java
+SugarRecord.delete(book); // if using the @Table annotation 
 ```
 
 ### Update Entity based on Unique values
@@ -166,6 +176,11 @@ Book sameBook = new Book("isbn123", "New Title", "5th edition")
 sameBook.update();
 
 book.getId() == sameBook.getId(); // true
+```
+
+or
+```java
+SugarRecord.update(sameBook); // if using the @Table annotation 
 ```
 
 ### Bulk Insert
